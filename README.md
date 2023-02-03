@@ -5,9 +5,7 @@ Rakus is a bot developed for [Galaxio](https://github.com/EntelectChallenge/2021
 WIP
 
 ## Prerequisites
-- [Oracle OpenJDK 17](https://www.oracle.com/java/technologies/downloads/#jdk17-windows)
-- [IntelliJ IDEA](https://www.jetbrains.com/idea/)
-- [NodeJS](https://nodejs.org/en/download/)
+- [Oracle OpenJDK 11 or later](https://www.oracle.com/java/technologies/downloads/)
 - [.Net Core 3.1](https://dotnet.microsoft.com/en-us/download/dotnet/3.1)
 
 ## Directory Structure
