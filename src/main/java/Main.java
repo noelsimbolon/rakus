@@ -54,11 +54,19 @@ public class Main {
             botService.setGameState(gameState);
         }, GameStateDto.class);
 
+        hubConnection.on("ReceiveGameComplete", (gameStateDto) -> {
+            System.out.println("Game over; did I win?");
+        }, GameStateDto.class);
+
+        hubConnection.on("ReceivePlayerConsumed", () -> {
+            System.out.println("Oh no! I've been consumed!");
+        });
+
         hubConnection.start().blockingAwait();
 
         Thread.sleep(1000);
         System.out.println("Registering with the runner...");
-        hubConnection.send("Register", token, "Coffee Bot");
+        hubConnection.send("Register", token, "Rakus v0.1");
 
         //This is a blocking call
         hubConnection.start().subscribe(() -> {
