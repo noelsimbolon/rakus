@@ -4,16 +4,29 @@ import Enums.*;
 import Models.*;
 
 import java.util.*;
-import java.util.stream.*;
+
+// RAKUS
+import rakus.struct.*;
+// END RAKUS
 
 public class BotService {
     private GameObject bot;
     private PlayerAction playerAction;
     private GameState gameState;
 
+    // RAKUS
+    private BotState botState;
+    private GameObject currentTarget;
+    // END RAKUS
+
     public BotService() {
         this.playerAction = new PlayerAction();
         this.gameState = new GameState();
+
+        // RAKUS
+        this.botState = BotState.IDLE;
+        this.currentTarget = null;
+        // END RAKUS
     }
 
 
@@ -33,8 +46,31 @@ public class BotService {
         this.playerAction = playerAction;
     }
 
+    // RAKUS
+    public BotState getBotState(){
+        return this.botState;
+    }
+
+    public void setBotState(BotState botState){
+        this.botState = botState;
+    }
+
+    public GameObject getCurrentTarget(){
+        return this.currentTarget;
+    }
+
+    public void setCurrentTarget(GameObject currentTarget){
+        this.currentTarget = currentTarget;
+    }
+    // END RAKUS
+
     public void computeNextPlayerAction(PlayerAction playerAction) {
-        playerAction.action = PlayerActions.FORWARD;
+        // RAKUS
+        botState = BotState.getNextState(this);
+        this.playerAction = botState.func.get(this, playerAction);
+        // END RAKUS
+
+        /*playerAction.action = PlayerActions.FORWARD;
         playerAction.heading = new Random().nextInt(360);
 
         if (!gameState.getGameObjects().isEmpty()) {
@@ -47,7 +83,7 @@ public class BotService {
             playerAction.heading = getHeadingBetween(foodList.get(0));
         }
 
-        this.playerAction = playerAction;
+        this.playerAction = playerAction;*/
     }
 
     public GameState getGameState() {
@@ -63,22 +99,4 @@ public class BotService {
         Optional<GameObject> optionalBot = gameState.getPlayerGameObjects().stream().filter(gameObject -> gameObject.id.equals(bot.id)).findAny();
         optionalBot.ifPresent(bot -> this.bot = bot);
     }
-
-    private double getDistanceBetween(GameObject object1, GameObject object2) {
-        var triangleX = Math.abs(object1.getPosition().x - object2.getPosition().x);
-        var triangleY = Math.abs(object1.getPosition().y - object2.getPosition().y);
-        return Math.sqrt(triangleX * triangleX + triangleY * triangleY);
-    }
-
-    private int getHeadingBetween(GameObject otherObject) {
-        var direction = toDegrees(Math.atan2(otherObject.getPosition().y - bot.getPosition().y,
-                otherObject.getPosition().x - bot.getPosition().x));
-        return (direction + 360) % 360;
-    }
-
-    private int toDegrees(double v) {
-        return (int) (v * (180 / Math.PI));
-    }
-
-
 }
