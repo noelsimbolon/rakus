@@ -6,6 +6,7 @@ import Models.*;
 import java.util.*;
 
 // RAKUS
+import rakus.*;
 import rakus.struct.*;
 // END RAKUS
 
@@ -26,6 +27,8 @@ public class BotService {
         // RAKUS
         this.botState = BotState.IDLE;
         this.currentTarget = null;
+
+        Vars.botService = this;
         // END RAKUS
     }
 
@@ -66,8 +69,8 @@ public class BotService {
 
     public void computeNextPlayerAction(PlayerAction playerAction) {
         // RAKUS
-        botState = BotState.getNextState(this);
-        this.playerAction = botState.func.get(this, playerAction);
+        botState = BotState.getNextState();
+        this.playerAction = botState.func.get(playerAction);
         // END RAKUS
 
         /*playerAction.action = PlayerActions.FORWARD;
