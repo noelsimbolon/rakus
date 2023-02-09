@@ -103,13 +103,19 @@ public enum BotState {
             if (players != null && !players.isEmpty()) {
                 int directHeading = Objects.headingBetween(players.get(0), bot);
                 var food = Objects.findClosest(
-                        item -> Math.abs(Objects.headingBetween(bot, item) - directHeading),
+                        item -> Objects.headingDiff(Objects.headingBetween(bot, item), directHeading),
                         item -> Objects.isFood(item) && Objects.safeFromEdge(item)
                 );
 
-                // Move towards food, or away from player if no food is found
-                action.action = PlayerActions.FORWARD;
-                action.heading = food == null ? directHeading : Objects.headingBetween(bot, food);
+                if (Objects.isWithin(bot, players.get(0), Vars.FLEE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
+                    // Fire a torpedo salvo towards the nearest opponent
+                    action.action = PlayerActions.FIRE_TORPEDOES;
+                    action.heading = Objects.headingReverse(directHeading);
+                } else {
+                    // Move towards food, or away from opponent if no food is found
+                    action.action = PlayerActions.FORWARD;
+                    action.heading = food == null ? directHeading : Objects.headingBetween(bot, food);
+                }
             }
         }
         return action;
@@ -142,8 +148,13 @@ public enum BotState {
             // Find nearest player with smaller size
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize());
             if (players != null && !players.isEmpty()) {
-                // Move towards the nearest smaller player
-                action.action = PlayerActions.FORWARD;
+                if (Objects.isWithin(bot, players.get(0), Vars.CHASE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
+                    // Fire a torpedo salvo towards the nearest opponent
+                    action.action = PlayerActions.FIRE_TORPEDOES;
+                } else {
+                    // Move towards the nearest smaller opponent
+                    action.action = PlayerActions.FORWARD;
+                }
                 action.heading = Objects.headingBetween(bot, players.get(0));
             }
         }
@@ -163,7 +174,11 @@ public enum BotState {
     public static BotState getNextState() {
         var str = new StringBuilder();
         var bot = botService.getBot();
-        str.append(String.format("Tick %d, pos (%d %d), size %d, evaluation score:\n", botService.getGameState().getWorld().getCurrentTick(), bot.getPosition().getX(), bot.getPosition().getY(), bot.getSize()));
+        str.append(String.format("Tick %d, pos (%d %d), size %d, torpedo %d, evaluation score:\n",
+            botService.getGameState().getWorld().getCurrentTick(),
+            bot.getPosition().getX(), bot.getPosition().getY(),
+            bot.getSize(), botService.getTorpedoCharge()
+        ));
 
         var values = BotState.values();
         BotState current = values[0];

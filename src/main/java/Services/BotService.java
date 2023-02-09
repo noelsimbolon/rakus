@@ -7,7 +7,6 @@ import Rakus.Struct.BotState;
 import Rakus.Vars;
 
 import java.util.Optional;
-// END RAKUS
 
 public class BotService {
     private GameObject bot;
@@ -15,8 +14,17 @@ public class BotService {
     private GameState gameState;
 
     // RAKUS
+    private int lastTickUpdate;
+
     private BotState botState;
     private GameObject currentTarget;
+
+    private int torpedoCharge;
+    private boolean isFiringTorpedo;
+
+    private int torpedoReload;
+    private int torpedoWarmup;
+    private int torpedoCooldown;
     // END RAKUS
 
     public BotService() {
@@ -24,8 +32,17 @@ public class BotService {
         this.gameState = new GameState();
 
         // RAKUS
+        this.lastTickUpdate = -1;
+
         this.botState = BotState.IDLE;
         this.currentTarget = null;
+
+        this.torpedoCharge = 0;
+        this.isFiringTorpedo = false;
+
+        this.torpedoReload = 0;
+        this.torpedoWarmup = 0;
+        this.torpedoCooldown = 0;
 
         Vars.botService = this;
         // END RAKUS
@@ -64,28 +81,61 @@ public class BotService {
     public void setCurrentTarget(GameObject currentTarget) {
         this.currentTarget = currentTarget;
     }
+
+    public int getTorpedoCharge() {
+        return this.torpedoCharge;
+    }
+
+    public boolean consumeTorpedoCharge() {
+        // Return true if already firing a torpedo
+        if (isFiringTorpedo) return true;
+
+        // Only return true if a charge is available and bot is sufficiently sized
+        if(torpedoCharge <= 0 || bot.getSize() < 10 || torpedoCooldown > 0) return false;
+
+        // Decrement charge and set cooldown to prevent spamming
+        isFiringTorpedo = true;
+        --torpedoCharge;
+        torpedoCooldown = 5;
+        return true;
+    }
+
+    private void update(int tick) {
+        // Don't update if tick has not advanced yet
+        if(tick != lastTickUpdate) {
+            // Update torpedo
+            if (torpedoCharge < 5) {
+                if (torpedoReload >= 10) {
+                    torpedoCharge++;
+                    torpedoReload = 0;
+                } else {
+                    torpedoReload++;
+                }
+            }
+            if (torpedoCooldown > 0) torpedoCooldown--;
+            if (isFiringTorpedo) torpedoWarmup++;
+            if (torpedoWarmup > 5) {
+                isFiringTorpedo = false;
+                torpedoWarmup = 0;
+            }
+        }
+    }
     // END RAKUS
 
     public void computeNextPlayerAction(PlayerAction playerAction) {
         // RAKUS
-        botState = BotState.getNextState();
-        this.playerAction = botState.func.get(playerAction);
+        Optional<Integer> optionalTick = Optional.ofNullable(gameState.getWorld().getCurrentTick());
+        optionalTick.ifPresent(tick -> {
+            // Update attributes
+            update(tick);
+
+            // Update bot state, compute action
+            botState = BotState.getNextState();
+            this.playerAction = botState.func.get(playerAction);
+
+            lastTickUpdate = tick;
+        });
         // END RAKUS
-
-        /*playerAction.action = PlayerActions.FORWARD;
-        playerAction.heading = new Random().nextInt(360);
-
-        if (!gameState.getGameObjects().isEmpty()) {
-            var foodList = gameState.getGameObjects()
-                    .stream().filter(item -> item.getGameObjectType() == ObjectTypes.FOOD)
-                    .sorted(Comparator
-                            .comparing(item -> getDistanceBetween(bot, item)))
-                    .collect(Collectors.toList());
-
-            playerAction.heading = getHeadingBetween(foodList.get(0));
-        }
-
-        this.playerAction = playerAction;*/
     }
 
     public GameState getGameState() {

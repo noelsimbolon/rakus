@@ -78,8 +78,9 @@ public class Objects {
 
     // Returns the Euclidean distance between a game object and world origin (0,0)
     public static double distanceFromOrigin(GameObject object) {
-        var triangleX = Math.abs(object.getPosition().x);
-        var triangleY = Math.abs(object.getPosition().y);
+        var orig = botService.getGameState().getWorld().getCenterPoint();
+        var triangleX = Math.abs(object.getPosition().x - orig.x);
+        var triangleY = Math.abs(object.getPosition().y - orig.y);
         return Math.sqrt(triangleX * triangleX + triangleY * triangleY);
     }
 
@@ -88,6 +89,17 @@ public class Objects {
         var direction = toDegrees(Math.atan2(object2.getPosition().y - object1.getPosition().y,
                 object2.getPosition().x - object1.getPosition().x));
         return (direction + 360) % 360;
+    }
+
+    // Returns a heading that is the reverse of a given heading
+    public static int headingReverse(int heading) {
+        return (heading + 180) % 360;
+    }
+
+    // Returns angle difference between two headings
+    public static int headingDiff(int heading1, int heading2) {
+        int d = Math.abs(heading1 - heading2);
+        return d < 180 ? d : (heading1 < heading2 ? Math.abs(heading1 - heading2 + 360) : Math.abs(heading1 - heading2 - 360));
     }
 
     // Returns whether an object is classified as food (includes superfood)
