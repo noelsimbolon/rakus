@@ -1,13 +1,12 @@
 package Services;
 
-import Enums.*;
-import Models.*;
+import Models.GameObject;
+import Models.GameState;
+import Models.PlayerAction;
+import Rakus.Struct.BotState;
+import Rakus.Vars;
 
-import java.util.*;
-
-// RAKUS
-import rakus.*;
-import rakus.struct.*;
+import java.util.Optional;
 // END RAKUS
 
 public class BotService {
@@ -50,19 +49,19 @@ public class BotService {
     }
 
     // RAKUS
-    public BotState getBotState(){
+    public BotState getBotState() {
         return this.botState;
     }
 
-    public void setBotState(BotState botState){
+    public void setBotState(BotState botState) {
         this.botState = botState;
     }
 
-    public GameObject getCurrentTarget(){
+    public GameObject getCurrentTarget() {
         return this.currentTarget;
     }
 
-    public void setCurrentTarget(GameObject currentTarget){
+    public void setCurrentTarget(GameObject currentTarget) {
         this.currentTarget = currentTarget;
     }
     // END RAKUS
