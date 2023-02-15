@@ -107,9 +107,9 @@ public enum BotState {
                         item -> Objects.isFood(item) && Objects.safeFromEdge(item)
                 );
 
-                if (Objects.isWithin(bot, players.get(0), Vars.FLEE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
+                if (Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.FLEE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
                     // Fire a torpedo salvo towards the nearest opponent
-                    action.action = PlayerActions.FIRE_TORPEDOES;
+                    action.action = PlayerActions.FIRETORPEDOES;
                     action.heading = Objects.headingReverse(directHeading);
                 } else {
                     // Move towards food, or away from opponent if no food is found
@@ -138,6 +138,7 @@ public enum BotState {
             }
         }
         return Integer.MIN_VALUE;
+
     }, action -> {
         // ACTION: Move towards the nearest smaller opponent
         var bot = botService.getBot();
@@ -148,9 +149,9 @@ public enum BotState {
             // Find nearest player with smaller size
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize());
             if (players != null && !players.isEmpty()) {
-                if (Objects.isWithin(bot, players.get(0), Vars.CHASE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
+                if (Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
                     // Fire a torpedo salvo towards the nearest opponent
-                    action.action = PlayerActions.FIRE_TORPEDOES;
+                    action.action = PlayerActions.FIRETORPEDOES;
                 } else {
                     // Move towards the nearest smaller opponent
                     action.action = PlayerActions.FORWARD;
@@ -174,11 +175,8 @@ public enum BotState {
     public static BotState getNextState() {
         var str = new StringBuilder();
         var bot = botService.getBot();
-        str.append(String.format("Tick %d, pos (%d %d), size %d, torpedo %d, evaluation score:\n",
-            botService.getGameState().getWorld().getCurrentTick(),
-            bot.getPosition().getX(), bot.getPosition().getY(),
-            bot.getSize(), botService.getTorpedoCharge()
-        ));
+        str.append(String.format("[TICK] Tick %d, current bot info:\n", botService.getGameState().getWorld().getCurrentTick()));
+        str.append(bot.toString());
 
         var values = BotState.values();
         BotState current = values[0];
@@ -193,7 +191,7 @@ public enum BotState {
             }
             str.append(String.format("\n  %s: %d", values[i].name(), newEval));
         }
-        str.append(String.format("\n  Selected: %s", current.name()));
+        str.append(String.format("\n  -> State selected: %s", current.name()));
 
         System.out.println(str.toString());
         return current;

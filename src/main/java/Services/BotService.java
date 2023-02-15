@@ -19,11 +19,8 @@ public class BotService {
     private BotState botState;
     private GameObject currentTarget;
 
-    private int torpedoCharge;
     private boolean isFiringTorpedo;
-
-    private int torpedoReload;
-    private int torpedoWarmup;
+    // private int torpedoWarmup;
     private int torpedoCooldown;
     // END RAKUS
 
@@ -37,11 +34,8 @@ public class BotService {
         this.botState = BotState.IDLE;
         this.currentTarget = null;
 
-        this.torpedoCharge = 0;
         this.isFiringTorpedo = false;
-
-        this.torpedoReload = 0;
-        this.torpedoWarmup = 0;
+        // this.torpedoWarmup = 0;
         this.torpedoCooldown = 0;
 
         Vars.botService = this;
@@ -82,43 +76,27 @@ public class BotService {
         this.currentTarget = currentTarget;
     }
 
-    public int getTorpedoCharge() {
-        return this.torpedoCharge;
-    }
-
     public boolean consumeTorpedoCharge() {
         // Return true if already firing a torpedo
         if (isFiringTorpedo) return true;
 
         // Only return true if a charge is available and bot is sufficiently sized
-        if(torpedoCharge <= 0 || bot.getSize() < 10 || torpedoCooldown > 0) return false;
+        if(bot.getTorpedoCharge() <= 0 || bot.getSize() < 10 || torpedoCooldown > 0) return false;
 
         // Decrement charge and set cooldown to prevent spamming
         isFiringTorpedo = true;
-        --torpedoCharge;
-        torpedoCooldown = 5;
+        torpedoCooldown = Vars.TORPEDO_COOLDOWN_TICK;
         return true;
     }
 
     private void update(int tick) {
-        // Don't update if tick has not advanced yet
-        if(tick != lastTickUpdate) {
-            // Update torpedo
-            if (torpedoCharge < 5) {
-                if (torpedoReload >= 10) {
-                    torpedoCharge++;
-                    torpedoReload = 0;
-                } else {
-                    torpedoReload++;
-                }
-            }
-            if (torpedoCooldown > 0) torpedoCooldown--;
-            if (isFiringTorpedo) torpedoWarmup++;
-            if (torpedoWarmup > 5) {
-                isFiringTorpedo = false;
-                torpedoWarmup = 0;
-            }
-        }
+        // Update torpedo
+        if (torpedoCooldown > 0) torpedoCooldown--;
+        /*if (isFiringTorpedo) torpedoWarmup++;
+        if (torpedoWarmup > Vars.TORPEDO_WARMUP_TICK) {
+            isFiringTorpedo = false;
+            torpedoWarmup = 0;
+        }*/
     }
     // END RAKUS
 
@@ -126,6 +104,8 @@ public class BotService {
         // RAKUS
         Optional<Integer> optionalTick = Optional.ofNullable(gameState.getWorld().getCurrentTick());
         optionalTick.ifPresent(tick -> {
+            if(tick == lastTickUpdate)return;
+
             // Update attributes
             update(tick);
 

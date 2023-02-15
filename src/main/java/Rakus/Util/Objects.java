@@ -129,7 +129,7 @@ public class Objects {
 
     // Returns whether an object can be safely reached without touching the world edge
     public static boolean safeFromEdge(GameObject object) {
-        return botService.getGameState().getWorld().getRadius() - distanceFromOrigin(object) > botService.getBot().getSize() + Vars.EDGE_AVOIDANCE;
+        return botService.getGameState().getWorld().getRadius() - distanceFromOrigin(object) > Vars.EDGE_AVOIDANCE * botService.getBot().getSize();
     }
 
     // Takes an angle in radians as argument and returns an equivalent angle in degrees

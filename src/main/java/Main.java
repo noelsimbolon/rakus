@@ -26,16 +26,16 @@ public class Main {
                 .build();
 
         hubConnection.on("Disconnect", (id) -> {
-            System.out.println("Disconnected:");
+            System.out.println("[INFO] Disconnected:");
 
             hubConnection.stop();
         }, UUID.class);
 
         hubConnection.on("Registered", (id) -> {
-            System.out.println("Registered with the runner " + id);
+            System.out.println("[INFO] Registered with the runner " + id);
 
             Position position = new Position();
-            GameObject bot = new GameObject(id, 10, 20, 0, position, ObjectTypes.PLAYER);
+            GameObject bot = new GameObject(id, 10, 20, 0, position, ObjectTypes.PLAYER, 0, 0);
             botService.setBot(bot);
         }, UUID.class);
 
@@ -54,18 +54,19 @@ public class Main {
             botService.setGameState(gameState);
         }, GameStateDto.class);
 
-        hubConnection.on("ReceiveGameComplete", (gameStateDto) -> {
-            System.out.println("Game over; did I win?");
-        }, GameStateDto.class);
+        hubConnection.on("ReceiveGameComplete", (string) -> {
+            System.out.println("[INFO] Game over; did I win?");
+            System.out.println("[INFO] Game completed with message: " + string);
+        }, String.class);
 
         hubConnection.on("ReceivePlayerConsumed", () -> {
-            System.out.println("Oh no! I've been consumed!");
+            System.out.println("[INFO] Oh no! I've been consumed!");
         });
 
         hubConnection.start().blockingAwait();
 
         Thread.sleep(1000);
-        System.out.println("Registering with the runner...");
+        System.out.println("[INFO] Registering with the runner...");
         hubConnection.send("Register", token, "Rakus v0.1");
 
         //This is a blocking call
@@ -81,7 +82,12 @@ public class Main {
                 botService.getPlayerAction().setPlayerId(bot.getId());
                 botService.computeNextPlayerAction(botService.getPlayerAction());
                 if (hubConnection.getConnectionState() == HubConnectionState.CONNECTED) {
-                    hubConnection.send("SendPlayerAction", botService.getPlayerAction());
+                    var action = botService.getPlayerAction();
+                    hubConnection.send("SendPlayerAction", action);
+
+                    /*if (action != null && action.action != null)
+                        System.out.printf("[INFO] Sent payload: {%d -> %d}%n", action.action.value, action.heading);
+                     */
                 }
             }
         });
