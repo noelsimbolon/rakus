@@ -229,14 +229,15 @@ public enum BotState {
     // PICK_SUPERNOVA - Move towards the supernova pickup
     PICK_SUPERNOVA(() -> {
         // PRIORITY: A b s o l u t e
-        var bot = botService.getBot();
+        // Temporarily disabled, TODO fix
+        /*var bot = botService.getBot();
         var gameState = botService.getGameState();
         var world = gameState.getWorld();
 
         if (!gameState.getGameObjects().isEmpty() && bot.teleporterCharge > 0) {
             if (Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_PICKUP) != null)
                 return Integer.MAX_VALUE;
-        }
+        }*/
 
         return Integer.MIN_VALUE;
 
