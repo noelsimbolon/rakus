@@ -1,7 +1,9 @@
 package Rakus.Struct;
 
+import Enums.ObjectTypes;
 import Enums.PlayerActions;
 import Models.GameObject;
+import Models.Position;
 import Rakus.Func.ActionFunc;
 import Rakus.Func.GameEvaluator;
 import Rakus.Util.Objects;
@@ -17,8 +19,9 @@ public enum BotState {
         return Integer.MIN_VALUE + 1;
 
     }, action -> {
-        // ACTION: Freeze in place and wait until a new state is chosen
-        action.action = PlayerActions.STOP;
+        // ACTION: Move towards the center of the map
+        action.action = PlayerActions.FORWARD;
+        action.heading = Objects.headingReverse(Objects.headingFromOrigin(botService.getBot()));
         return action;
     }),
 
@@ -35,7 +38,7 @@ public enum BotState {
             // Search new food target if transitioning in from another state or current food is already eaten
             GameObject finalTarget = target;
             if (!Objects.isFood(target) || gameState.getGameObjects().stream().noneMatch(item -> Objects.equals(item, finalTarget))) {
-                target = Objects.findClosest(bot, item -> Objects.isFood(item) && Objects.safeFromEdge(item));
+                target = Objects.findClosest(item -> Objects.distanceBetween(bot, item) + Objects.priorityPenalty(item, bot), Objects::isFood);
             }
 
             // Score is proportional to minus distance to the target and current bot size
@@ -57,7 +60,7 @@ public enum BotState {
             // Search new food target if transitioning in from another state or current food is already eaten
             GameObject finalTarget = target;
             if (!Objects.isFood(target) || gameState.getGameObjects().stream().noneMatch(item -> Objects.equals(item, finalTarget))) {
-                target = Objects.findClosest(bot, Objects::isFood);
+                target = Objects.findClosest(item -> Objects.distanceBetween(bot, item) /*+ Objects.priorityPenalty(item, bot)*/, obj -> Objects.isFood(obj) && Objects.priorityPenalty(obj, bot) <= 50);
             }
 
             // Move towards current target
@@ -149,7 +152,13 @@ public enum BotState {
             // Find nearest player with smaller size
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize());
             if (players != null && !players.isEmpty()) {
-                if (Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
+                var teleporter = botService.getTeleporter();
+                if (teleporter != null /*&& Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() < player.getSize(), Vars.CHASE_LOW_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()*/
+                    && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_LOW_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()){
+                    // If teleporter is close to a target and it is safe to do so (no larger players in range), trigger
+                    System.out.println("[INFO] Attempting to teleport!");
+                    action.action = PlayerActions.TELEPORT;
+                } else if (Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
                     // Fire a torpedo salvo towards the nearest opponent
                     action.action = PlayerActions.FIRETORPEDOES;
                 } else {
@@ -159,6 +168,170 @@ public enum BotState {
                 action.heading = Objects.headingBetween(bot, players.get(0));
             }
         }
+        return action;
+    }),
+
+    /* ------------------------------------------------------------------------------------------------------- */
+    // CHASE_HIGH - Gives aggressive pursuit to a vulnerable opponent
+    CHASE_HIGH(() -> {
+        // PRIORITY: Proportional to minus distance to the nearest smaller opponent within CHASE_HIGH_SEARCH_RADIUS, or MIN_VALUE if no enemies are found
+        var bot = botService.getBot();
+        var gameState = botService.getGameState();
+        var world = gameState.getWorld();
+
+        if (!gameState.getPlayerGameObjects().isEmpty()) {
+            // Score is distance to nearest other player within a radius times a constant
+            var players = Objects.findPlayersWithin(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > (botService.getTeleporter() == null ? Vars.CHASE_HIGH_SIZE_DIFF : 0) + player.getSize(), Vars.CHASE_HIGH_SEARCH_RADIUS);
+            if (players != null && !players.isEmpty()) {
+                int distance = (int) Objects.distanceBetween(bot, players.get(0));
+                return (int) (Vars.CHASE_HIGH_SCOREMULT * (2 * world.radius - distance + ((botService.getTeleporter() != null ? 1 : 0) + bot.getTeleporterCharge()) * Vars.CHASE_HIGH_TELEPORT_BONUS));
+            }
+        }
+
+        return Integer.MIN_VALUE;
+
+    }, action -> {
+        // ACTION: Move towards the targeted opponent, utilizing teleporters if available
+        var bot = botService.getBot();
+        var gameState = botService.getGameState();
+        var world = gameState.getWorld();
+
+        if (!gameState.getPlayerGameObjects().isEmpty()) {
+            // Find nearest player with smaller size
+            var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > (botService.getTeleporter() == null ? Vars.CHASE_HIGH_SIZE_DIFF : 0) + Vars.CHASE_HIGH_SIZE_DIFF + player.getSize());
+            if (players != null && !players.isEmpty()) {
+                var teleporter = botService.getTeleporter();
+                if (teleporter != null /*&& Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() < player.getSize(), Vars.CHASE_HIGH_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()*/
+                    && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_HIGH_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()){
+                    // If teleporter is close to a target and it is safe to do so (no larger players in range), trigger
+                    System.out.println("[INFO] Attempting to teleport!");
+                    action.action = PlayerActions.TELEPORT;
+                } else if (teleporter == null && !botService.hasFiredTeleporter() && bot.teleporterCharge > 1 && Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TELEPORT_RANGE)){
+                    // Fire a teleporter towards the targeted opponent
+                    action.action = PlayerActions.FIRETELEPORT;
+                    botService.fireTeleporter();
+                } else{
+                    if(Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TORPEDO_RANGE) && botService.consumeTorpedoCharge()){
+                        // Fire a torpedo salvo towards the nearest opponent
+                        action.action = PlayerActions.FIRETORPEDOES;
+                    }else{
+                        // Move towards the nearest smaller opponent
+                        action.action = PlayerActions.FORWARD;
+                    }
+                }
+                action.heading = Objects.headingBetween(bot, players.get(0));
+            }
+        }
+        return action;
+    }),
+
+    /* ------------------------------------------------------------------------------------------------------- */
+    // PICK_SUPERNOVA - Move towards the supernova pickup
+    PICK_SUPERNOVA(() -> {
+        // PRIORITY: A b s o l u t e
+        var bot = botService.getBot();
+        var gameState = botService.getGameState();
+        var world = gameState.getWorld();
+
+        if (!gameState.getGameObjects().isEmpty() && bot.teleporterCharge > 0) {
+            if (Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_PICKUP) != null)
+                return Integer.MAX_VALUE;
+        }
+
+        return Integer.MIN_VALUE;
+
+    }, action -> {
+        // ACTION: is for me????
+        var bot = botService.getBot();
+        var gameState = botService.getGameState();
+        var world = gameState.getWorld();
+
+        if (!gameState.getGameObjects().isEmpty()) {
+            var pickup = Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_PICKUP);
+
+            if (pickup != null) {
+                FLEE_LOW.func.get(action);
+                System.out.printf("[WARN] Supernova pickup is present at (%d %d)%n", pickup.getPosition().getX(), pickup.getPosition().getY());
+
+                var teleporter = botService.getTeleporter();
+                if (Objects.isWithin(teleporter, pickup, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_RADIUS)) {
+                    // Teleport to the pickup
+                    action.action = PlayerActions.TELEPORT;
+                } else if (teleporter == null && !botService.hasFiredTeleporter() && bot.getTeleporterCharge() > 0 && bot.getSize() > Vars.TELEPORTER_SAFE_SIZE) {
+                    // Fire a teleporter towards the pickup
+                    action.action = PlayerActions.FIRETELEPORT;
+                    action.heading = Objects.headingBetween(bot, pickup);
+                } else if (Objects.isWithin(bot, pickup, Vars.PICK_SUPERNOVA_TOXIC_RADIUS)) {
+                    var opponents = Objects.findPlayersWithin(pickup, Objects::isEnemyPlayer, Vars.PICK_SUPERNOVA_TOXIC_RADIUS);
+                    if (opponents != null && !opponents.isEmpty() && botService.consumeTorpedoCharge()) {
+                        // Lodge torpedoes in those undeserving of the Holy Weapon
+                        action.action = PlayerActions.FIRETORPEDOES;
+                        action.heading = Objects.headingBetween(bot, opponents.get(0));
+                    } else {
+                        // Move one step closer into the Weapon's embrace
+                        action.action = PlayerActions.FORWARD;
+                        action.heading = Objects.headingBetween(bot, pickup);
+                    }
+                }
+            }
+        }
+
+        return action;
+    }),
+
+    /* ------------------------------------------------------------------------------------------------------- */
+    // ANY - A special state that is always run on every tick AFTER the current bot state update
+    ANY(() -> Integer.MIN_VALUE, action -> {
+        // ACTION: Do high-priority or emergency tasks
+        var bot = botService.getBot();
+        var gameState = botService.getGameState();
+        var world = gameState.getWorld();
+
+        var opponents = Objects.findPlayers(GameObject::getSize, Objects::isEnemyPlayer);
+
+        // Move away from gas clouds
+        var gasClouds = Objects.findWithin(bot, obj -> obj.getGameObjectType() == ObjectTypes.GAS_CLOUD, bot.getSize() + Vars.ANY_GASCLOUD_SEARCH_RADIUS);
+        if (action.action == PlayerActions.FORWARD && gasClouds != null && !gasClouds.isEmpty()) {
+            var nearest = gasClouds.get(0);
+            int avoidance = Objects.headingMedian(bot.currentHeading, Objects.headingBetween(nearest, bot));
+            // Smoothing step to reduce jittery turning movement
+            action.heading = Objects.headingMedian(action.heading, avoidance);
+            System.out.println("[INFO] Attempting to avoid a gas cloud");
+        }
+
+        // Move away from world edge
+        if (action.action == PlayerActions.FORWARD && Objects.distanceFromOrigin(bot) + bot.getSize() + Vars.ANY_EDGE_AVOID_RADIUS > world.getRadius()) {
+            int avoidance = Objects.headingMedian(bot.currentHeading, Objects.headingReverse(Objects.headingFromOrigin(bot)));
+            // Smoothing step to reduce jittery turning movement
+            action.heading = Objects.headingMedian(action.heading, avoidance);
+            System.out.println("[INFO] Attempting to move away from world edge");
+        }
+
+        if (opponents != null && !opponents.isEmpty()){
+            // Fire a supernova bomb
+            if(bot.hasSupernova() && botService.getSupernova() == null){
+                action.action = PlayerActions.FIRESUPERNOVA;
+                action.heading = Objects.headingBetween(bot, opponents.get(opponents.size() - 1));
+            }
+
+            // Detonate a supernova bomb
+            if(botService.getSupernova() != null){
+                if(Objects.isWithin(botService.getSupernova(), opponents.get(opponents.size() - 1), 0.25 * world.getRadius())) {
+                    action.action = PlayerActions.DETONATESUPERNOVA;
+                }
+            }
+        }
+
+        // Block incoming torpedos with shield
+        if (bot.getShieldCharge() > 0 && !Objects.findWithin(bot,
+            obj ->
+                obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO
+                && Objects.headingDiff(Objects.headingBetween(bot, obj), obj.currentHeading) >= Vars.ANY_SHIELD_HEADING_DIFF,
+            bot.getSize() + Vars.ANY_SHIELD_SEARCH_RADIUS).isEmpty() && bot.getSize() > Vars.SHIELD_SAFE_SIZE) {
+            action.action = PlayerActions.ACTIVATESHIELD;
+            System.out.println("[INFO] Activating shield");
+        }
+
         return action;
     });
 
@@ -175,15 +348,16 @@ public enum BotState {
     public static BotState getNextState() {
         var str = new StringBuilder();
         var bot = botService.getBot();
-        str.append(String.format("[TICK] Tick %d, current bot info:\n", botService.getGameState().getWorld().getCurrentTick()));
+        str.append(String.format("[INFO] Tick %d, current bot info:\n", botService.getGameState().getWorld().getCurrentTick()));
         str.append(bot.toString());
 
+        str.append("evaluation:\n");
         var values = BotState.values();
         BotState current = values[0];
         int currentEval = current.eval.get();
         str.append(String.format("  %s: %d", current.name(), currentEval));
 
-        for (int i = 1; i < values.length; i++) {
+        for (int i = 1; i < values.length - 1; i++) {
             int newEval = values[i].eval.get();
             if (newEval > currentEval) {
                 current = values[i];

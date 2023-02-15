@@ -1,12 +1,15 @@
 package Services;
 
+import Enums.ObjectTypes;
 import Models.GameObject;
 import Models.GameState;
 import Models.PlayerAction;
 import Rakus.Struct.BotState;
+import Rakus.Util.Objects;
 import Rakus.Vars;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public class BotService {
     private GameObject bot;
@@ -19,9 +22,15 @@ public class BotService {
     private BotState botState;
     private GameObject currentTarget;
 
-    private boolean isFiringTorpedo;
-    // private int torpedoWarmup;
     private int torpedoCooldown;
+
+    private GameObject teleporter;
+    private int teleporterSearchTime;
+    private boolean hasFiredTeleporter;
+
+    private GameObject supernova;
+    private int supernovaSearchTime;
+    private boolean hasFiredSupernova;
     // END RAKUS
 
     public BotService() {
@@ -34,10 +43,15 @@ public class BotService {
         this.botState = BotState.IDLE;
         this.currentTarget = null;
 
-        this.isFiringTorpedo = false;
-        // this.torpedoWarmup = 0;
         this.torpedoCooldown = 0;
 
+        this.teleporter = null;
+        this.teleporterSearchTime = 0;
+        this.hasFiredTeleporter = false;
+
+        this.supernova = null;
+        this.supernovaSearchTime = 0;
+        this.hasFiredSupernova = false;
         Vars.botService = this;
         // END RAKUS
     }
@@ -76,27 +90,94 @@ public class BotService {
         this.currentTarget = currentTarget;
     }
 
-    public boolean consumeTorpedoCharge() {
-        // Return true if already firing a torpedo
-        if (isFiringTorpedo) return true;
+    public GameObject getTeleporter() {
+        return this.teleporter;
+    }
 
+    public void setTeleporter(GameObject teleporter) {
+        this.teleporter = teleporter;
+    }
+
+    public void fireTeleporter() {
+        this.hasFiredTeleporter = true;
+        this.teleporterSearchTime = Vars.OBJECT_SEARCH_TIME;
+    }
+
+    public boolean hasFiredTeleporter() {
+        return this.hasFiredTeleporter;
+    }
+
+    public GameObject getSupernova() {
+        return this.supernova;
+    }
+
+    public void setSupernova(GameObject supernova) {
+        this.supernova = supernova;
+    }
+
+    public void fireSupernova() {
+        this.hasFiredSupernova = true;
+        this.supernovaSearchTime = Vars.OBJECT_SEARCH_TIME;
+    }
+
+    public boolean hasFiredSupernova() {
+        return this.hasFiredSupernova;
+    }
+
+    public boolean consumeTorpedoCharge() {
         // Only return true if a charge is available and bot is sufficiently sized
-        if(bot.getTorpedoCharge() <= 0 || bot.getSize() < 10 || torpedoCooldown > 0) return false;
+        if(bot.getTorpedoCharge() <= 0 || bot.getSize() < Vars.TORPEDO_SAFE_SIZE || torpedoCooldown > 0) return false;
 
         // Decrement charge and set cooldown to prevent spamming
-        isFiringTorpedo = true;
         torpedoCooldown = Vars.TORPEDO_COOLDOWN_TICK;
         return true;
     }
 
     private void update(int tick) {
         // Update torpedo
-        if (torpedoCooldown > 0) torpedoCooldown--;
-        /*if (isFiringTorpedo) torpedoWarmup++;
-        if (torpedoWarmup > Vars.TORPEDO_WARMUP_TICK) {
-            isFiringTorpedo = false;
-            torpedoWarmup = 0;
-        }*/
+        if (torpedoCooldown > 0) --torpedoCooldown;
+
+        // Keep track of teleporter object
+        if (teleporter != null) {
+            var pos = teleporter.getPosition();
+            System.out.printf("[INFO] Tracking a teleporter object at (%d %d)%n", pos.getX(), pos.getY());
+        }
+        if (hasFiredTeleporter) {
+            System.out.println("[INFO] Trying to find my teleporter...");
+            teleporter = Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.TELEPORTER);
+            if (teleporter != null) {
+                hasFiredTeleporter = false;
+                System.out.printf("[INFO] Found a teleporter towards %d%n", teleporter.currentHeading);
+                teleporterSearchTime = 0;
+            } else {
+                --teleporterSearchTime;
+                if (teleporterSearchTime == 0) {
+                    hasFiredTeleporter = false;
+                    System.out.println("[INFO] Failed to find my teleporter, stopping search");
+                }
+            }
+        }
+
+        // Keep track of supernova object
+        if (supernova != null) {
+            var pos = supernova.getPosition();
+            System.out.printf("[INFO] Tracking a supernova object at (%d %d)%n", pos.getX(), pos.getY());
+        }
+        if (hasFiredSupernova) {
+            System.out.println("[INFO] Trying to find my supernova...");
+            supernova = Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_BOMB);
+            if (supernova != null) {
+                hasFiredSupernova = false;
+                System.out.printf("[INFO] Found a supernova towards %d%n", supernova.currentHeading);
+                supernovaSearchTime = 0;
+            } else {
+                --supernovaSearchTime;
+                if (supernovaSearchTime == 0) {
+                    hasFiredSupernova = false;
+                    System.out.println("[INFO] Failed to find my supernova, this sucks");
+                }
+            }
+        }
     }
     // END RAKUS
 
@@ -105,6 +186,7 @@ public class BotService {
         Optional<Integer> optionalTick = Optional.ofNullable(gameState.getWorld().getCurrentTick());
         optionalTick.ifPresent(tick -> {
             if(tick == lastTickUpdate)return;
+            System.out.printf("\n[TICK] Beginning of tick %d%n", tick);
 
             // Update attributes
             update(tick);
@@ -112,6 +194,7 @@ public class BotService {
             // Update bot state, compute action
             botState = BotState.getNextState();
             this.playerAction = botState.func.get(playerAction);
+            this.playerAction = BotState.ANY.func.get(playerAction);
 
             lastTickUpdate = tick;
         });
@@ -128,7 +211,9 @@ public class BotService {
     }
 
     private void updateSelfState() {
-        Optional<GameObject> optionalBot = gameState.getPlayerGameObjects().stream().filter(gameObject -> gameObject.id.equals(bot.id)).findAny();
+        var optionalBot = gameState.getPlayerGameObjects().stream().filter(obj -> obj.id.equals(bot.id)).findAny();
         optionalBot.ifPresent(bot -> this.bot = bot);
+        currentTarget = Objects.findSelf(currentTarget);
+        teleporter = Objects.findSelf(teleporter);
     }
 }

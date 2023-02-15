@@ -8,9 +8,9 @@ public enum PlayerActions {
     FIRETORPEDOES(5),
     FIRESUPERNOVA(6),
     DETONATESUPERNOVA(7),
-    FIRETELEPORTER(8),
+    FIRETELEPORT(8),
     TELEPORT(9),
-    USE_SHIELD(10);
+    ACTIVATESHIELD(10);
 
     public final Integer value;
 

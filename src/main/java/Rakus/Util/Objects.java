@@ -6,6 +6,7 @@ import Rakus.Vars;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -13,6 +14,30 @@ import java.util.stream.Collectors;
 import static Rakus.Vars.botService;
 
 public class Objects {
+    // Returns a game object with the given UUID, or null if such game object doesn't exist
+    public static GameObject findWithUUID(UUID id) {
+        var gameState = botService.getGameState();
+
+        var res = gameState.getPlayerGameObjects().stream().filter(obj -> id.equals(obj.getId())).findAny();
+        if (res.isEmpty())
+            res = gameState.getGameObjects().stream().filter(obj -> id.equals(obj.getId())).findAny();
+
+        if (res.isEmpty())
+            return null;
+        return res.get();
+    }
+
+    // Returns the instance of a stored object in the current game state (with the same UUID but updated state)
+    public static GameObject findSelf(GameObject object) {
+        if (object == null) return null;
+
+        var optional = botService.getGameState().getGameObjects().stream().filter(obj -> obj.getId().equals(object.getId())).findAny();
+        if (optional.isEmpty())
+            return null;
+        else
+            return optional.get();
+    }
+
     // Returns a list containing all game objects satisfying a given predicate, sorted ascending by distance to a game object
     public static List<GameObject> findAll(GameObject object, Predicate<GameObject> pred) {
         return findAll(item -> distanceBetween(object, item), pred);
@@ -55,18 +80,23 @@ public class Objects {
 
     // Returns a list containing all players satisfying a given predicate, sorted ascending by distance to a game object
     public static List<GameObject> findPlayers(GameObject object, Predicate<GameObject> pred) {
+        return findPlayers(player -> distanceBetween(object, player), pred);
+    }
+
+    // Returns a list containing all players satisfying a given predicate, sorted ascending by a comparison function
+    public static <T extends Comparable<? super T>> List<GameObject> findPlayers(Function<GameObject, ? extends T> comparator, Predicate<GameObject> pred) {
         var gameState = botService.getGameState();
         if (gameState.getPlayerGameObjects() == null) return null;
 
         return gameState.getPlayerGameObjects()
-                .stream().filter(pred)
-                .sorted(Comparator.comparing(player -> distanceBetween(object, player)))
-                .collect(Collectors.toList());
+            .stream().filter(pred)
+            .sorted(Comparator.comparing(comparator))
+            .collect(Collectors.toList());
     }
 
     // Returns a list containing all players satisfying a given predicate within a distance from a game object
     public static List<GameObject> findPlayersWithin(GameObject object, Predicate<GameObject> pred, double radius) {
-        return findPlayers(object, player -> pred.test(player) && isWithin(botService.getBot(), player, radius));
+        return findPlayers(object, player -> pred.test(player) && isWithin(object, player, radius));
     }
 
     // Returns the Euclidean distance between two game objects
@@ -82,6 +112,12 @@ public class Objects {
         var triangleX = Math.abs(object.getPosition().x - orig.x);
         var triangleY = Math.abs(object.getPosition().y - orig.y);
         return Math.sqrt(triangleX * triangleX + triangleY * triangleY);
+    }
+
+    // Returns the angle of an object from the world origin
+    public static int headingFromOrigin(GameObject object) {
+        var direction = toDegrees(Math.atan2(object.getPosition().y, object.getPosition().x));
+        return (direction + 360) % 360;
     }
 
     // Returns an angle (in degrees) specifying direction from object1 to object2
@@ -100,6 +136,30 @@ public class Objects {
     public static int headingDiff(int heading1, int heading2) {
         int d = Math.abs(heading1 - heading2);
         return d < 180 ? d : (heading1 < heading2 ? Math.abs(heading1 - heading2 + 360) : Math.abs(heading1 - heading2 - 360));
+    }
+
+    // Returns the median between two headings
+    public static int headingMedian(int heading1, int heading2) {
+        // Force heading1 <= heading2
+        if (heading1 > heading2) return headingMedian(heading2, heading1);
+        // There are two angles that is equidistant to either heading, choose one with the least distance
+        int m = (heading1 + heading2) / 2;
+        if (headingDiff(heading1, m) > 90)
+            m += 180;
+        return m % 360;
+    }
+
+    // Returns priority penalty (if negative, bonus) against a game object from the perspective of a bot
+    public static int priorityPenalty(GameObject object, GameObject bot) {
+        int total = 0;
+        if (!findWithin(object, obj -> obj.getGameObjectType() == ObjectTypes.GAS_CLOUD, bot.getSize() * Vars.GAS_CLOUD_AVOIDANCE).isEmpty())
+            total += Vars.GAS_CLOUD_PENALTY;
+        if (!findWithin(object, obj -> obj.getGameObjectType() == ObjectTypes.ASTEROID_FIELD, bot.getSize() * Vars.ASTEROID_FIELD_AVOIDANCE).isEmpty())
+            total += Vars.ASTEROID_FIELD_PENALTY;
+        if (!safeFromEdge(object))
+            total += Vars.EDGE_PENALTY;
+
+        return total;
     }
 
     // Returns whether an object is classified as food (includes superfood)
