@@ -153,12 +153,7 @@ public enum BotState {
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize());
             if (players != null && !players.isEmpty()) {
                 var teleporter = botService.getTeleporter();
-                if (teleporter != null /*&& Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() < player.getSize(), Vars.CHASE_LOW_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()*/
-                    && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_LOW_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()){
-                    // If teleporter is close to a target and it is safe to do so (no larger players in range), trigger
-                    System.out.println("[INFO] Attempting to teleport!");
-                    action.action = PlayerActions.TELEPORT;
-                } else if (Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
+                if (teleporter == null && Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_LOW_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
                     // Fire a torpedo salvo towards the nearest opponent
                     action.action = PlayerActions.FIRETORPEDOES;
                 } else {
@@ -201,15 +196,9 @@ public enum BotState {
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > (botService.getTeleporter() == null ? Vars.CHASE_HIGH_SIZE_DIFF : 0) + Vars.CHASE_HIGH_SIZE_DIFF + player.getSize());
             if (players != null && !players.isEmpty()) {
                 var teleporter = botService.getTeleporter();
-                if (teleporter != null /*&& Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() < player.getSize(), Vars.CHASE_HIGH_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()*/
-                    && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_HIGH_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()){
-                    // If teleporter is close to a target and it is safe to do so (no larger players in range), trigger
-                    System.out.println("[INFO] Attempting to teleport!");
-                    action.action = PlayerActions.TELEPORT;
-                } else if (teleporter == null && !botService.hasFiredTeleporter() && bot.teleporterCharge > 1 && Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TELEPORT_RANGE)){
+                if (teleporter == null && Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TELEPORT_RANGE) && botService.consumeTeleporterCharge()){
                     // Fire a teleporter towards the targeted opponent
                     action.action = PlayerActions.FIRETELEPORT;
-                    botService.fireTeleporter();
                 } else{
                     if(Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TORPEDO_RANGE) && botService.consumeTorpedoCharge()){
                         // Fire a torpedo salvo towards the nearest opponent
@@ -230,14 +219,14 @@ public enum BotState {
     PICK_SUPERNOVA(() -> {
         // PRIORITY: A b s o l u t e
         // Temporarily disabled, TODO fix
-        /*var bot = botService.getBot();
+        var bot = botService.getBot();
         var gameState = botService.getGameState();
         var world = gameState.getWorld();
 
-        if (!gameState.getGameObjects().isEmpty() && bot.teleporterCharge > 0) {
+        if (!gameState.getGameObjects().isEmpty() && (bot.teleporterCharge > 0 || botService.getTeleporter() != null)) {
             if (Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_PICKUP) != null)
-                return Integer.MAX_VALUE;
-        }*/
+                return (int)(Vars.PICK_SUPERNOVA_SCOREMULT * (Vars.PICK_SUPERNOVA_WEIGHT_BIAS + bot.teleporterCharge) * bot.getSize());
+        }
 
         return Integer.MIN_VALUE;
 
@@ -255,15 +244,12 @@ public enum BotState {
                 System.out.printf("[WARN] Supernova pickup is present at (%d %d)%n", pickup.getPosition().getX(), pickup.getPosition().getY());
 
                 var teleporter = botService.getTeleporter();
-                if (Objects.isWithin(teleporter, pickup, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_RADIUS)) {
-                    // Teleport to the pickup
-                    action.action = PlayerActions.TELEPORT;
-                } else if (teleporter == null && !botService.hasFiredTeleporter() && bot.getTeleporterCharge() > 0 && bot.getSize() > Vars.TELEPORTER_SAFE_SIZE) {
+                if (teleporter == null && botService.consumeTeleporterCharge()) {
                     // Fire a teleporter towards the pickup
                     action.action = PlayerActions.FIRETELEPORT;
                     action.heading = Objects.headingBetween(bot, pickup);
                 } else if (Objects.isWithin(bot, pickup, Vars.PICK_SUPERNOVA_TOXIC_RADIUS)) {
-                    var opponents = Objects.findPlayersWithin(pickup, Objects::isEnemyPlayer, Vars.PICK_SUPERNOVA_TOXIC_RADIUS);
+                    var opponents = Objects.findPlayersWithin(pickup, Objects::isEnemyPlayer, bot.getSize() + Vars.PICK_SUPERNOVA_TOXIC_RADIUS);
                     if (opponents != null && !opponents.isEmpty() && botService.consumeTorpedoCharge()) {
                         // Lodge torpedoes in those undeserving of the Holy Weapon
                         action.action = PlayerActions.FIRETORPEDOES;
@@ -310,20 +296,42 @@ public enum BotState {
 
         if (opponents != null && !opponents.isEmpty()){
             // Fire a supernova bomb
-            if(bot.hasSupernova() && botService.getSupernova() == null){
+            if(botService.consumeSupernova()){
                 action.action = PlayerActions.FIRESUPERNOVA;
                 action.heading = Objects.headingBetween(bot, opponents.get(opponents.size() - 1));
+                System.out.println("[INFO] Firing a supernova!");
             }
 
             // Detonate a supernova bomb
             if(botService.getSupernova() != null){
-                if(Objects.isWithin(botService.getSupernova(), opponents.get(opponents.size() - 1), 0.25 * world.getRadius())) {
+                if(!Objects.isWithin(botService.getSupernova(), bot, 0.25 * world.getRadius())
+                    && !Objects.findPlayersWithin(botService.getSupernova(), Objects::isEnemyPlayer, 0.25 * world.getRadius()).isEmpty()) {
                     action.action = PlayerActions.DETONATESUPERNOVA;
+                    System.out.println("[INFO] Detonating a supernova!");
                 }
             }
         }
 
-        // Block incoming torpedos with shield
+        var teleporter = botService.getTeleporter();
+
+        // Trigger chase teleporters
+        if (teleporter != null /*&& Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() < player.getSize(), Vars.CHASE_HIGH_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()*/
+            && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()){
+            // If teleporter is close to a target and it is safe to do so (no larger players in range), trigger
+            System.out.println("[INFO] Attempting to teleport to opponent!");
+            action.action = PlayerActions.TELEPORT;
+        }
+
+        // Trigger supernova pickup teleporters
+        var pickup = Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_PICKUP);
+        if (Objects.isWithin(teleporter, pickup, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_RADIUS)
+            && Objects.findPlayersWithin(bot, Objects::isEnemyPlayer, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_SAFETY_RADIUS).isEmpty()) {
+            // Teleport to the pickup if the surrounding is relatively safe
+            System.out.println("[INFO] Attempting to teleport to supernova pickup!");
+            action.action = PlayerActions.TELEPORT;
+        }
+
+            // Block incoming torpedos with shield
         if (bot.getShieldCharge() > 0 && !Objects.findWithin(bot,
             obj ->
                 obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO

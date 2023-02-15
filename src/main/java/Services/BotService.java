@@ -26,6 +26,7 @@ public class BotService {
 
     private GameObject teleporter;
     private int teleporterSearchTime;
+    private int teleporterCooldown;
     private boolean hasFiredTeleporter;
 
     private GameObject supernova;
@@ -47,6 +48,7 @@ public class BotService {
 
         this.teleporter = null;
         this.teleporterSearchTime = 0;
+        this.teleporterCooldown = 0;
         this.hasFiredTeleporter = false;
 
         this.supernova = null;
@@ -115,27 +117,42 @@ public class BotService {
         this.supernova = supernova;
     }
 
-    public void fireSupernova() {
-        this.hasFiredSupernova = true;
-        this.supernovaSearchTime = Vars.OBJECT_SEARCH_TIME;
-    }
-
     public boolean hasFiredSupernova() {
         return this.hasFiredSupernova;
     }
 
     public boolean consumeTorpedoCharge() {
         // Only return true if a charge is available and bot is sufficiently sized
-        if(bot.getTorpedoCharge() <= 0 || bot.getSize() < Vars.TORPEDO_SAFE_SIZE || torpedoCooldown > 0) return false;
+        if (bot.getTorpedoCharge() <= 0 || bot.getSize() < Vars.TORPEDO_SAFE_SIZE || torpedoCooldown > 0) return false;
 
-        // Decrement charge and set cooldown to prevent spamming
+        // Set cooldown to prevent spamming
         torpedoCooldown = Vars.TORPEDO_COOLDOWN_TICK;
         return true;
     }
 
+    public boolean consumeTeleporterCharge() {
+        // Only return true if a charge is available and bot is sufficiently sized
+        if (bot.getTeleporterCharge() <= 0 || bot.getSize() < Vars.TELEPORTER_SAFE_SIZE || teleporterCooldown > 0) return false;
+
+        // Set cooldown to prevent spamming
+        hasFiredTeleporter = true;
+        teleporterSearchTime = Vars.OBJECT_SEARCH_TIME;
+        teleporterCooldown = Vars.TELEPORTER_COOLDOWN_TICK;
+        return true;
+    }
+
+    public boolean consumeSupernova() {
+        // Return true if a charge is available and has not fired one already
+        if (!bot.hasSupernova() || supernova != null) return false;
+
+        hasFiredSupernova = true;
+        return true;
+    }
+
     private void update(int tick) {
-        // Update torpedo
+        // Update cooldown timers
         if (torpedoCooldown > 0) --torpedoCooldown;
+        if (teleporterCooldown > 0) --teleporterCooldown;
 
         // Keep track of teleporter object
         if (teleporter != null) {
@@ -215,5 +232,6 @@ public class BotService {
         optionalBot.ifPresent(bot -> this.bot = bot);
         currentTarget = Objects.findSelf(currentTarget);
         teleporter = Objects.findSelf(teleporter);
+        supernova = Objects.findSelf(supernova);
     }
 }
