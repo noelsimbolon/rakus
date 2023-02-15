@@ -73,7 +73,7 @@ every tick.
     start "Rakus" java -jar Rakus.jar
     ```
 
-For your convenience, everything above can be done with the following batch script.
+For your convenience, step 4 until 7 can be done with the following batch script.
 The script runs 3 reference bots and a single Rakus bot.
 ```shell
 :: Run this script from the root folder
