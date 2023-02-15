@@ -38,7 +38,7 @@ public enum BotState {
             // Search new food target if transitioning in from another state or current food is already eaten
             GameObject finalTarget = target;
             if (!Objects.isFood(target) || gameState.getGameObjects().stream().noneMatch(item -> Objects.equals(item, finalTarget))) {
-                target = Objects.findClosest(item -> Objects.distanceBetween(bot, item) + Objects.priorityPenalty(item, bot), Objects::isFood);
+                target = Objects.findClosest(item -> Objects.distanceBetween(bot, item) /*+ Objects.priorityPenalty(item, bot)*/, obj -> Objects.isFood(obj) && Objects.priorityPenalty(obj, bot) <= 50);
             }
 
             // Score is proportional to minus distance to the target and current bot size
