@@ -274,6 +274,7 @@ public enum BotState {
         var world = gameState.getWorld();
 
         var opponents = Objects.findPlayers(GameObject::getSize, Objects::isEnemyPlayer);
+        String act = null;
 
         // Move away from gas clouds
         var gasClouds = Objects.findWithin(bot, obj -> obj.getGameObjectType() == ObjectTypes.GAS_CLOUD, bot.getSize() + Vars.ANY_GASCLOUD_SEARCH_RADIUS);
@@ -282,7 +283,7 @@ public enum BotState {
             int avoidance = Objects.headingMedian(bot.currentHeading, Objects.headingBetween(nearest, bot));
             // Smoothing step to reduce jittery turning movement
             action.heading = Objects.headingMedian(action.heading, avoidance);
-            System.out.println("[INFO] Attempting to avoid a gas cloud");
+            act = "[INFO] Attempting to avoid a gas cloud";
         }
 
         // Move away from world edge
@@ -290,7 +291,7 @@ public enum BotState {
             int avoidance = Objects.headingMedian(bot.currentHeading, Objects.headingReverse(Objects.headingFromOrigin(bot)));
             // Smoothing step to reduce jittery turning movement
             action.heading = Objects.headingMedian(action.heading, avoidance);
-            System.out.println("[INFO] Attempting to move away from world edge");
+            act = "[INFO] Attempting to move away from world edge";
         }
 
         if (opponents != null && !opponents.isEmpty()){
@@ -298,7 +299,7 @@ public enum BotState {
             if(botService.consumeSupernova()){
                 action.action = PlayerActions.FIRESUPERNOVA;
                 action.heading = Objects.headingBetween(bot, opponents.get(opponents.size() - 1));
-                System.out.println("[INFO] Firing a supernova!");
+                act = "[INFO] Firing a supernova!";
             }
 
             // Detonate a supernova bomb
@@ -306,7 +307,7 @@ public enum BotState {
                 if(!Objects.isWithin(botService.getSupernova(), bot, 0.25 * world.getRadius())
                     && !Objects.findPlayersWithin(botService.getSupernova(), Objects::isEnemyPlayer, 0.25 * world.getRadius()).isEmpty()) {
                     action.action = PlayerActions.DETONATESUPERNOVA;
-                    System.out.println("[INFO] Detonating a supernova!");
+                    act = "[INFO] Detonating a supernova!";
                 }
             }
         }
@@ -317,7 +318,7 @@ public enum BotState {
         if (teleporter != null /*&& Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() < player.getSize(), Vars.CHASE_HIGH_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()*/
             && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()){
             // If teleporter is close to a target and it is safe to do so (no larger players in range), trigger
-            System.out.println("[INFO] Attempting to teleport to opponent!");
+            act = "[INFO] Attempting to teleport to opponent!";
             action.action = PlayerActions.TELEPORT;
         }
 
@@ -326,20 +327,33 @@ public enum BotState {
         if (Objects.isWithin(teleporter, pickup, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_RADIUS)
             && Objects.findPlayersWithin(bot, Objects::isEnemyPlayer, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_SAFETY_RADIUS).isEmpty()) {
             // Teleport to the pickup if the surrounding is relatively safe
-            System.out.println("[INFO] Attempting to teleport to supernova pickup!");
+            act = "[INFO] Attempting to teleport to supernova pickup!";
             action.action = PlayerActions.TELEPORT;
         }
 
-        // Block incoming torpedos with shield
+        // Block incoming torpedoes with shield
         if (bot.getShieldCharge() > 0 && !Objects.findWithin(bot,
             obj ->
                 obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO
                 && Objects.headingDiff(Objects.headingBetween(bot, obj), obj.currentHeading) >= Vars.ANY_SHIELD_HEADING_DIFF,
-            bot.getSize() + Vars.ANY_SHIELD_SEARCH_RADIUS).isEmpty() && bot.getSize() > Vars.SHIELD_SAFE_SIZE) {
+                bot.getSize() + Vars.ANY_SHIELD_SEARCH_RADIUS).isEmpty() && bot.getSize() > Vars.SHIELD_SAFE_SIZE) {
             action.action = PlayerActions.ACTIVATESHIELD;
-            System.out.println("[INFO] Activating shield");
+            act = "[INFO] Activating shield";
         }
 
+        // Intercept incoming torpedoes
+        var torpedoes = Objects.findWithin(bot,
+            obj ->
+                obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO
+                && Objects.headingDiff(Objects.headingBetween(bot, obj), obj.currentHeading) >= Vars.ANY_INTERCEPT_HEADING_DIFF,
+                bot.getSize() + Vars.ANY_INTERCEPT_SEARCH_RADIUS);
+        if (!torpedoes.isEmpty() && botService.consumeTorpedoCharge()) {
+            action.action = PlayerActions.FIRETORPEDOES;
+            action.heading = Objects.headingBetween(bot, torpedoes.get(0));
+            act = "[INFO] Attempting to intercepting incoming torpedoes";
+        }
+
+        if (act != null) System.out.println(act);
         return action;
     });
 

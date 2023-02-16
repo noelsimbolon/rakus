@@ -44,9 +44,11 @@ public class Vars {
     public static final double
         ANY_GASCLOUD_SEARCH_RADIUS = 120,
         ANY_EDGE_AVOID_RADIUS = 60,
-        ANY_SHIELD_SEARCH_RADIUS = 90;
+        ANY_SHIELD_SEARCH_RADIUS = 90,
+        ANY_INTERCEPT_SEARCH_RADIUS = 60;
     public static final int
-        ANY_SHIELD_HEADING_DIFF = 135;
+        ANY_SHIELD_HEADING_DIFF = 135,
+        ANY_INTERCEPT_HEADING_DIFF = 135;
 
     // Other modifiers
     public static final double
@@ -66,14 +68,14 @@ public class Vars {
 
     // Ability cooldown values
     public static final int
-        TORPEDO_COOLDOWN_TICK = 1,
-        TELEPORTER_COOLDOWN_TICK = 5;
+        TORPEDO_COOLDOWN_TICK = 2,
+        TELEPORTER_COOLDOWN_TICK = 10;
 
     // Object minimum size for actions
     public static final int
-        TORPEDO_SAFE_SIZE = 10,
-        TELEPORTER_SAFE_SIZE = 30,
-        SHIELD_SAFE_SIZE = 30;
+        TORPEDO_SAFE_SIZE = 15,
+        TELEPORTER_SAFE_SIZE = 40,
+        SHIELD_SAFE_SIZE = 40;
     // Bot constants
     public static final int
         OBJECT_SEARCH_TIME = 30;
