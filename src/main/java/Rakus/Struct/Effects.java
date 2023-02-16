@@ -8,12 +8,12 @@ public enum Effects {
     public static final EnumSet<Effects> ALL = EnumSet.allOf(Effects.class);
 
     public static EnumSet<Effects> fromFlags(int flags) {
-        var set = EnumSet.noneOf(Effects.class);
-        if ((flags & 0x00001) > 0) set.add(AFTERBURNER);
-        if ((flags & 0x00010) > 0) set.add(ASTEROIDFIELD);
-        if ((flags & 0x00100) > 0) set.add(GASCLOUD);
-        if ((flags & 0x01000) > 0) set.add(SUPERFOOD);
-        if ((flags & 0x10000) > 0) set.add(SHIELD);
+        var set = EnumSet.allOf(Effects.class);
+        if ((flags & 0b00001) == 0) set.remove(AFTERBURNER);
+        if ((flags & 0b00010) == 0) set.remove(ASTEROIDFIELD);
+        if ((flags & 0b00100) == 0) set.remove(GASCLOUD);
+        if ((flags & 0b01000) == 0) set.remove(SUPERFOOD);
+        if ((flags & 0b10000) == 0) set.remove(SHIELD);
 
         return set;
     }

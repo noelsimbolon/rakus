@@ -229,7 +229,7 @@ public class BotService {
 
     private void updateSelfState() {
         var optionalBot = gameState.getPlayerGameObjects().stream().filter(obj -> obj.id.equals(bot.id)).findAny();
-        optionalBot.ifPresent(bot -> this.bot = bot);
+        bot = optionalBot.orElse(null);
         currentTarget = Objects.findSelf(currentTarget);
         teleporter = Objects.findSelf(teleporter);
         supernova = Objects.findSelf(supernova);

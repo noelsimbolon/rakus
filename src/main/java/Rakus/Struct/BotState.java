@@ -218,7 +218,6 @@ public enum BotState {
     // PICK_SUPERNOVA - Move towards the supernova pickup
     PICK_SUPERNOVA(() -> {
         // PRIORITY: A b s o l u t e
-        // Temporarily disabled, TODO fix
         var bot = botService.getBot();
         var gameState = botService.getGameState();
         var world = gameState.getWorld();
@@ -331,7 +330,7 @@ public enum BotState {
             action.action = PlayerActions.TELEPORT;
         }
 
-            // Block incoming torpedos with shield
+        // Block incoming torpedos with shield
         if (bot.getShieldCharge() > 0 && !Objects.findWithin(bot,
             obj ->
                 obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO

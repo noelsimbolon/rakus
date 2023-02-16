@@ -66,7 +66,7 @@ public class Vars {
 
     // Ability cooldown values
     public static final int
-        TORPEDO_COOLDOWN_TICK = 0,
+        TORPEDO_COOLDOWN_TICK = 1,
         TELEPORTER_COOLDOWN_TICK = 5;
 
     // Object minimum size for actions
