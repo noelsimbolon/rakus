@@ -1,6 +1,6 @@
 package Rakus.Struct;
 
-import java.util.*;
+import java.util.EnumSet;
 
 public enum Effects {
     AFTERBURNER, ASTEROIDFIELD, GASCLOUD, SUPERFOOD, SHIELD;

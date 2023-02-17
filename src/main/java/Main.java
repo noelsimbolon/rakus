@@ -1,11 +1,18 @@
-import Enums.*;
-import Models.*;
-import Services.*;
-import com.microsoft.signalr.*;
+import Enums.ObjectTypes;
+import Models.GameObject;
+import Models.GameState;
+import Models.GameStateDto;
+import Models.Position;
+import Services.BotService;
+import com.microsoft.signalr.HubConnection;
+import com.microsoft.signalr.HubConnectionBuilder;
+import com.microsoft.signalr.HubConnectionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class Main {
 
@@ -67,9 +74,9 @@ public class Main {
 
         Thread.sleep(1000);
         System.out.println("[INFO] Registering with the runner...");
-        hubConnection.send("Register", token, "Rakus v0.1");
+        hubConnection.send("Register", token, "Rakus");
 
-        //This is a blocking call
+        // This is a blocking call
         hubConnection.start().subscribe(() -> {
             while (hubConnection.getConnectionState() == HubConnectionState.CONNECTED) {
                 Thread.sleep(20);
@@ -84,10 +91,6 @@ public class Main {
                 if (hubConnection.getConnectionState() == HubConnectionState.CONNECTED) {
                     var action = botService.getPlayerAction();
                     hubConnection.send("SendPlayerAction", action);
-
-                    /*if (action != null && action.action != null)
-                        System.out.printf("[INFO] Sent payload: {%d -> %d}%n", action.action.value, action.heading);
-                     */
                 }
             }
         });

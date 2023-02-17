@@ -3,7 +3,6 @@ package Rakus.Struct;
 import Enums.ObjectTypes;
 import Enums.PlayerActions;
 import Models.GameObject;
-import Models.Position;
 import Rakus.Func.ActionFunc;
 import Rakus.Func.GameEvaluator;
 import Rakus.Util.Objects;
@@ -82,7 +81,7 @@ public enum BotState {
         var world = gameState.getWorld();
 
         if (!gameState.getPlayerGameObjects().isEmpty()) {
-            // Score is distance to nearest other player within a radius times a constant
+            // Score is distance to the nearest other player within a radius times a constant
             var players = Objects.findPlayersWithin(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() <= player.getSize(), Vars.FLEE_LOW_SEARCH_RADIUS);
             if (players != null && !players.isEmpty()) {
                 int distance = (int) Objects.distanceBetween(bot, players.get(0));
@@ -101,7 +100,7 @@ public enum BotState {
         botService.setCurrentTarget(null);
 
         if (!gameState.getPlayerGameObjects().isEmpty()) {
-            // Choose a direction with food away from nearest player as flee direction
+            // Choose a direction with food away from the nearest player as flee direction
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() <= player.getSize());
             if (players != null && !players.isEmpty()) {
                 int directHeading = Objects.headingBetween(players.get(0), bot);
@@ -133,7 +132,7 @@ public enum BotState {
         var world = gameState.getWorld();
 
         if (!gameState.getPlayerGameObjects().isEmpty()) {
-            // Score is distance to nearest other player within a radius times a constant
+            // Score is distance to the nearest other player within a radius times a constant
             var players = Objects.findPlayersWithin(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_LOW_SEARCH_RADIUS);
             if (players != null && !players.isEmpty()) {
                 int distance = (int) Objects.distanceBetween(bot, players.get(0));
@@ -149,7 +148,7 @@ public enum BotState {
         var world = gameState.getWorld();
 
         if (!gameState.getPlayerGameObjects().isEmpty()) {
-            // Find nearest player with smaller size
+            // Find the nearest player with smaller size
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize());
             if (players != null && !players.isEmpty()) {
                 var teleporter = botService.getTeleporter();
@@ -175,7 +174,7 @@ public enum BotState {
         var world = gameState.getWorld();
 
         if (!gameState.getPlayerGameObjects().isEmpty()) {
-            // Score is distance to nearest other player within a radius times a constant
+            // Score is distance to the nearest other player within a radius times a constant
             var players = Objects.findPlayersWithin(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > (botService.getTeleporter() == null ? Vars.CHASE_HIGH_SIZE_DIFF : 0) + player.getSize(), Vars.CHASE_HIGH_SEARCH_RADIUS);
             if (players != null && !players.isEmpty()) {
                 int distance = (int) Objects.distanceBetween(bot, players.get(0));
@@ -192,18 +191,18 @@ public enum BotState {
         var world = gameState.getWorld();
 
         if (!gameState.getPlayerGameObjects().isEmpty()) {
-            // Find nearest player with smaller size
+            // Find the nearest player with smaller size
             var players = Objects.findPlayers(bot, player -> Objects.isEnemyPlayer(player) && bot.getSize() > (botService.getTeleporter() == null ? Vars.CHASE_HIGH_SIZE_DIFF : 0) + Vars.CHASE_HIGH_SIZE_DIFF + player.getSize());
             if (players != null && !players.isEmpty()) {
                 var teleporter = botService.getTeleporter();
-                if (teleporter == null && Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TELEPORT_RANGE) && botService.consumeTeleporterCharge()){
+                if (teleporter == null && Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TELEPORT_RANGE) && botService.consumeTeleporterCharge()) {
                     // Fire a teleporter towards the targeted opponent
                     action.action = PlayerActions.FIRETELEPORT;
-                } else{
-                    if(Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TORPEDO_RANGE) && botService.consumeTorpedoCharge()){
+                } else {
+                    if (Objects.isWithin(bot, players.get(0), bot.getSize() + Vars.CHASE_HIGH_TORPEDO_RANGE) && botService.consumeTorpedoCharge()) {
                         // Fire a torpedo salvo towards the nearest opponent
                         action.action = PlayerActions.FIRETORPEDOES;
-                    }else{
+                    } else {
                         // Move towards the nearest smaller opponent
                         action.action = PlayerActions.FORWARD;
                     }
@@ -224,7 +223,7 @@ public enum BotState {
 
         if (!gameState.getGameObjects().isEmpty() && (bot.teleporterCharge > 0 || botService.getTeleporter() != null)) {
             if (Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_PICKUP) != null)
-                return (int)(Vars.PICK_SUPERNOVA_SCOREMULT * (Vars.PICK_SUPERNOVA_WEIGHT_BIAS + bot.teleporterCharge) * bot.getSize());
+                return (int) (Vars.PICK_SUPERNOVA_SCOREMULT * (Vars.PICK_SUPERNOVA_WEIGHT_BIAS + bot.teleporterCharge) * bot.getSize());
         }
 
         return Integer.MIN_VALUE;
@@ -294,18 +293,18 @@ public enum BotState {
             act = "[INFO] Attempting to move away from world edge";
         }
 
-        if (opponents != null && !opponents.isEmpty()){
+        if (opponents != null && !opponents.isEmpty()) {
             // Fire a supernova bomb
-            if(botService.consumeSupernova()){
+            if (botService.consumeSupernova()) {
                 action.action = PlayerActions.FIRESUPERNOVA;
                 action.heading = Objects.headingBetween(bot, opponents.get(opponents.size() - 1));
                 act = "[INFO] Firing a supernova!";
             }
 
             // Detonate a supernova bomb
-            if(botService.getSupernova() != null){
-                if(!Objects.isWithin(botService.getSupernova(), bot, 0.25 * world.getRadius())
-                    && !Objects.findPlayersWithin(botService.getSupernova(), Objects::isEnemyPlayer, 0.25 * world.getRadius()).isEmpty()) {
+            if (botService.getSupernova() != null) {
+                if (!Objects.isWithin(botService.getSupernova(), bot, 0.25 * world.getRadius())
+                        && !Objects.findPlayersWithin(botService.getSupernova(), Objects::isEnemyPlayer, 0.25 * world.getRadius()).isEmpty()) {
                     action.action = PlayerActions.DETONATESUPERNOVA;
                     act = "[INFO] Detonating a supernova!";
                 }
@@ -316,8 +315,8 @@ public enum BotState {
 
         // Trigger chase teleporters
         if (teleporter != null /*&& Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() < player.getSize(), Vars.CHASE_HIGH_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()*/
-            && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()){
-            // If teleporter is close to a target and it is safe to do so (no larger players in range), trigger
+                && !Objects.findPlayersWithin(teleporter, player -> Objects.isEnemyPlayer(player) && bot.getSize() > player.getSize(), Vars.CHASE_TELEPORT_CLEARANCE * bot.getSize()).isEmpty()) {
+            // If teleporter is close to a target, and it is safe to do so (no larger players in range), trigger
             act = "[INFO] Attempting to teleport to opponent!";
             action.action = PlayerActions.TELEPORT;
         }
@@ -325,7 +324,7 @@ public enum BotState {
         // Trigger supernova pickup teleporters
         var pickup = Objects.findClosest(bot, obj -> obj.getGameObjectType() == ObjectTypes.SUPERNOVA_PICKUP);
         if (Objects.isWithin(teleporter, pickup, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_RADIUS)
-            && Objects.findPlayersWithin(bot, Objects::isEnemyPlayer, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_SAFETY_RADIUS).isEmpty()) {
+                && Objects.findPlayersWithin(bot, Objects::isEnemyPlayer, bot.getSize() + Vars.PICK_SUPERNOVA_TELEPORT_SAFETY_RADIUS).isEmpty()) {
             // Teleport to the pickup if the surrounding is relatively safe
             act = "[INFO] Attempting to teleport to supernova pickup!";
             action.action = PlayerActions.TELEPORT;
@@ -333,9 +332,9 @@ public enum BotState {
 
         // Block incoming torpedoes with shield
         if (bot.getShieldCharge() > 0 && !Objects.findWithin(bot,
-            obj ->
-                obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO
-                && Objects.headingDiff(Objects.headingBetween(bot, obj), obj.currentHeading) >= Vars.ANY_SHIELD_HEADING_DIFF,
+                obj ->
+                        obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO
+                                && Objects.headingDiff(Objects.headingBetween(bot, obj), obj.currentHeading) >= Vars.ANY_SHIELD_HEADING_DIFF,
                 bot.getSize() + Vars.ANY_SHIELD_SEARCH_RADIUS).isEmpty() && bot.getSize() > Vars.SHIELD_SAFE_SIZE) {
             action.action = PlayerActions.ACTIVATESHIELD;
             act = "[INFO] Activating shield";
@@ -343,9 +342,9 @@ public enum BotState {
 
         // Intercept incoming torpedoes
         var torpedoes = Objects.findWithin(bot,
-            obj ->
-                obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO
-                && Objects.headingDiff(Objects.headingBetween(bot, obj), obj.currentHeading) >= Vars.ANY_INTERCEPT_HEADING_DIFF,
+                obj ->
+                        obj.getGameObjectType() == ObjectTypes.TORPEDO_SALVO
+                                && Objects.headingDiff(Objects.headingBetween(bot, obj), obj.currentHeading) >= Vars.ANY_INTERCEPT_HEADING_DIFF,
                 bot.getSize() + Vars.ANY_INTERCEPT_SEARCH_RADIUS);
         if (!torpedoes.isEmpty() && botService.consumeTorpedoCharge()) {
             action.action = PlayerActions.FIRETORPEDOES;

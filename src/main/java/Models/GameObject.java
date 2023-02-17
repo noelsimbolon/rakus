@@ -1,10 +1,12 @@
 package Models;
 
-import Enums.*;
-import Rakus.Struct.*;
+import Enums.ObjectTypes;
+import Rakus.Struct.Effects;
 import Rakus.Vars;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.UUID;
 
 public class GameObject {
     public UUID id;
@@ -31,6 +33,25 @@ public class GameObject {
         this.hasSupernova = hasSupernova;
         this.teleporterCharge = teleporterCharge;
         this.shieldCharge = shieldCharge;
+    }
+
+    public static GameObject FromStateList(UUID id, List<Integer> stateList) {
+        Position position = new Position(stateList.get(4), stateList.get(5));
+        Integer
+                effects = 0,
+                torpedoCharge = 0,
+                teleporterCharge = 0,
+                shieldCharge = 0;
+        boolean hasSupernova = false;
+        if (stateList.size() == Vars.PLAYER_ATTRIB_COUNT) {
+            effects = stateList.get(6);
+            torpedoCharge = stateList.get(7);
+            hasSupernova = stateList.get(8) != 0;
+            teleporterCharge = stateList.get(9);
+            shieldCharge = stateList.get(10);
+        }
+
+        return new GameObject(id, stateList.get(0), stateList.get(1), stateList.get(2), position, ObjectTypes.valueOf(stateList.get(3)), effects, torpedoCharge, hasSupernova, teleporterCharge, shieldCharge);
     }
 
     public UUID getId() {
@@ -93,43 +114,23 @@ public class GameObject {
         return this.shieldCharge != null ? this.shieldCharge : 0;
     }
 
-    public static GameObject FromStateList(UUID id, List<Integer> stateList)
-    {
-        Position position = new Position(stateList.get(4), stateList.get(5));
-        Integer
-            effects = 0,
-            torpedoCharge = 0,
-            teleporterCharge = 0,
-            shieldCharge = 0;
-        boolean hasSupernova = false;
-        if (stateList.size() == Vars.PLAYER_ATTRIB_COUNT){
-            effects = stateList.get(6);
-            torpedoCharge = stateList.get(7);
-            hasSupernova = stateList.get(8) != 0;
-            teleporterCharge = stateList.get(9);
-            shieldCharge = stateList.get(10);
-        }
-
-        return new GameObject(id, stateList.get(0), stateList.get(1), stateList.get(2), position, ObjectTypes.valueOf(stateList.get(3)), effects, torpedoCharge, hasSupernova, teleporterCharge, shieldCharge);
-    }
-
     @Override
     public String toString() {
         var str = new StringBuilder();
         str.append(String.format("type: %s, pos: %d %d\n", gameObjectType.name(), position.getX(), position.getY()));
         str.append(String.format("mov: %d -> %d, size: %d", speed, currentHeading, size));
-        if (gameObjectType == ObjectTypes.PLAYER){
+        if (gameObjectType == ObjectTypes.PLAYER) {
             str.append("\narmaments:\n");
             str.append(String.format("  torpedo: %d, teleport: %d, shield: %d", torpedoCharge, teleporterCharge, shieldCharge));
             if (hasSupernova) str.append(", supernova");
             str.append("\neffects:");
-            if (!activeEffects.isEmpty()){
+            if (!activeEffects.isEmpty()) {
                 str.append("\n ");
-                if(activeEffects.contains(Effects.AFTERBURNER)) str.append(" afterburn");
-                if(activeEffects.contains(Effects.ASTEROIDFIELD)) str.append(" asteroid");
-                if(activeEffects.contains(Effects.GASCLOUD)) str.append(" gascloud");
-                if(activeEffects.contains(Effects.SUPERFOOD)) str.append(" superfood");
-                if(activeEffects.contains(Effects.SHIELD)) str.append(" shield");
+                if (activeEffects.contains(Effects.AFTERBURNER)) str.append(" afterburn");
+                if (activeEffects.contains(Effects.ASTEROIDFIELD)) str.append(" asteroid");
+                if (activeEffects.contains(Effects.GASCLOUD)) str.append(" gascloud");
+                if (activeEffects.contains(Effects.SUPERFOOD)) str.append(" superfood");
+                if (activeEffects.contains(Effects.SHIELD)) str.append(" shield");
             }
         }
         str.append('\n');

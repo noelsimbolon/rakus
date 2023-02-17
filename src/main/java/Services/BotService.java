@@ -9,7 +9,6 @@ import Rakus.Util.Objects;
 import Rakus.Vars;
 
 import java.util.Optional;
-import java.util.UUID;
 
 public class BotService {
     private GameObject bot;
@@ -132,7 +131,8 @@ public class BotService {
 
     public boolean consumeTeleporterCharge() {
         // Only return true if a charge is available and bot is sufficiently sized
-        if (bot.getTeleporterCharge() <= 0 || bot.getSize() < Vars.TELEPORTER_SAFE_SIZE || teleporterCooldown > 0) return false;
+        if (bot.getTeleporterCharge() <= 0 || bot.getSize() < Vars.TELEPORTER_SAFE_SIZE || teleporterCooldown > 0)
+            return false;
 
         // Set cooldown to prevent spamming
         hasFiredTeleporter = true;
@@ -202,7 +202,7 @@ public class BotService {
         // RAKUS
         Optional<Integer> optionalTick = Optional.ofNullable(gameState.getWorld().getCurrentTick());
         optionalTick.ifPresent(tick -> {
-            if(tick == lastTickUpdate)return;
+            if (tick == lastTickUpdate) return;
             System.out.printf("\n[TICK] Beginning of tick %d%n", tick);
 
             // Update attributes

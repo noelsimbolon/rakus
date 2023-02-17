@@ -89,9 +89,9 @@ public class Objects {
         if (gameState.getPlayerGameObjects() == null) return null;
 
         return gameState.getPlayerGameObjects()
-            .stream().filter(pred)
-            .sorted(Comparator.comparing(comparator))
-            .collect(Collectors.toList());
+                .stream().filter(pred)
+                .sorted(Comparator.comparing(comparator))
+                .collect(Collectors.toList());
     }
 
     // Returns a list containing all players satisfying a given predicate within a distance from a game object

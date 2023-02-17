@@ -1,6 +1,7 @@
 package Models;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GameState {
 
@@ -14,7 +15,7 @@ public class GameState {
         playerGameObjects = new ArrayList<GameObject>();
     }
 
-    public GameState(World world , List<GameObject> gameObjects, List<GameObject> playerGameObjects) {
+    public GameState(World world, List<GameObject> gameObjects, List<GameObject> playerGameObjects) {
         this.world = world;
         this.gameObjects = gameObjects;
         this.playerGameObjects = playerGameObjects;
