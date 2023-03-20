@@ -118,10 +118,3 @@ Extract `Galaxio-windows.zip` in the `starter-pack/visualiser` directory and run
 Next, open the `Options` menu and copy the `logger-publish` path to `Log Files Location`, then save.
 Open the `Load` menu, select the JSON file you want to load from the `Game Log` dropdown menu.
 Finally, click `Start`.
-
-## Authors
-| Name              | GitHub                                                |
-|-------------------|-------------------------------------------------------|
-| Noel Simbolon     | [noelsimbolon](https://github.com/noelsimbolon)       |
-| Jericho Sebastian | [JerichoFletcher](https://github.com/JerichoFletcher) |
-| Moh. Aghna Abyan  | [AghnaAbyan](https://github.com/AghnaAbyan)           |
